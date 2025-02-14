@@ -109,8 +109,21 @@ class WinePCA():
             bar_labels.append(f'PC{i+1}')
             cumulative_variance.append(cumulative_variance[-1] + variance_ratio)
         cumulative_variance.pop(0)
+        ax.grid(alpha=0.25)
+        ax.set_axisbelow(True)
         ax.bar(bar_labels, expalined_variance_ratio, label=bar_labels)
         ax.plot(range(0,len(cumulative_variance)), cumulative_variance, color = 'black', label='cumulative explained variance')
+
+    def pairplot(self, features=[]):
+        sns.color_palette("tab10")
+        if not features:
+            print(':(')
+            sns.pairplot(self.data, hue="target", palette='bright')
+        else:
+            features.append('target')
+            print(':)')
+            sns.pairplot(self.data[features], hue="target", palette='bright')
+        sns.reset_defaults()
 
 if __name__ == '__main__':
     winepca = WinePCA()
@@ -119,7 +132,8 @@ if __name__ == '__main__':
     winepca.perform_PCA()
     #winepca.score_plot(ax)
     #winepca.plot_loadnings_scatter(ax)
-    winepca.biplot(ax,0,1,scale=0)
+    #winepca.biplot(ax,0,1,scale=0)
+    winepca.pairplot()
     #winepca.scree_plot(ax)
     plt.tight_layout()
     plt.show()
