@@ -173,3 +173,8 @@ cython_debug/
 #Do not include datasets
 *.csv
 *.png
+
+#AUDIO
+*.wav
+*.aiff
+*.mp3
