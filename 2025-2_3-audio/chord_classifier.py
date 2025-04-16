@@ -3,8 +3,14 @@ from glob import glob
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import sklearn.decomposition
+import sklearn.ensemble
+import sklearn.model_selection
+import sklearn.pipeline
+import sklearn.preprocessing
 import soundfile as sf
 import sklearn
+import joblib
 
 def get_chord_path_dict(dir_path, extention: str = '.wav'):
     ''' Returns a dictionary with keys being chord names, and values being paths to sample files'''
@@ -60,7 +66,7 @@ def get_freq_amp_data(df):
     channel_index = []
     for index, row in df.iterrows():
         #print(index)
-        df_data.append(np.abs(np.fft.rfft(row)))
+        df_data.append(np.abs(np.fft.rfft(row))[:1024])
         chord, sample, channel = index
         chord_index.append(chord)
         sample_index.append(sample)
@@ -76,7 +82,6 @@ def train_classifier_model(X_train, y_train):
     return clf
 
 def get_chord_classifier():
-    sns.set_style("whitegrid")
     df = get_signal_data()
     df_freq_amp = get_freq_amp_data(df)
     df = df.reset_index(level=('chord'))
@@ -84,6 +89,7 @@ def get_chord_classifier():
     # print(df)
     # print(df_freq_amp)
     X = df_freq_amp.loc[:, df_freq_amp.columns != 'chord']
+    X = sklearn.preprocessing.minmax_scale(X)
     y = df_freq_amp['chord']
     #print(X, y)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X,y, test_size=0.33,random_state=0)
@@ -98,6 +104,60 @@ def get_chord_classifier():
 
     return clf
 
+def chord_pipeline():
+    df = get_signal_data()
+    df_freq_amp = get_freq_amp_data(df)
+    df = df.reset_index(level=('chord'))
+    df_freq_amp = df_freq_amp.reset_index(level=('chord'))
+
+    pipe = sklearn.pipeline.Pipeline([('scaler', sklearn.preprocessing.MinMaxScaler()),
+                                      ('pca', sklearn.decomposition.PCA()),
+                                      ('classifier', sklearn.ensemble.RandomForestClassifier(random_state=0))])
+    
+    params = {
+        'pca__n_components' : [0.8, 0.95, 10, 5],
+
+        'classifier__n_estimators' : [50, 100, 200],
+        'classifier__max_depth' : [None, 10, 30],
+        'classifier__min_samples_split' : [2, 4, 0.2]
+    }
+
+    grid_search = sklearn.model_selection.GridSearchCV(estimator=pipe,
+                                                       param_grid=params,
+                                                       cv=5,
+                                                       scoring='accuracy',
+                                                       verbose=1,
+                                                       n_jobs=-1)
+    
+    X = df_freq_amp.loc[:, df_freq_amp.columns != 'chord']
+    X = sklearn.preprocessing.minmax_scale(X)
+    y = df_freq_amp['chord']
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X,y, test_size=0.33,random_state=0)
+
+    grid_search.fit(X_train, y_train)
+    model = grid_search.best_estimator_
+
+    # pipe.fit(X_train, y_train)
+    proba_results = model.predict_proba(X_test)
+
+    print(model.score(X_test,y_test))
+    for i in range(len(proba_results)):
+        print(y_test.iloc[i], proba_results[i])
+
+    # joblib.dump(model, 'pipe_optimized.joblib')
+    model_loaded = get_pipe_optimized()
+    print(model.score(X_test,y_test))
+    print(model_loaded.score(X_test,y_test))
+    proba_loaded = model_loaded.predict_proba(X_test)
+    for i in range(len(proba_results)):
+        print(y_test.iloc[i], proba_results[i], proba_loaded[i])
+
+    return model
+
+def get_pipe_optimized():
+    return joblib.load('pipe_optimized.joblib')
 
 if __name__ == '__main__':
-    get_chord_classifier()
+    sns.set_style("whitegrid")
+    #get_chord_classifier()
+    chord_pipeline()
