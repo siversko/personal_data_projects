@@ -1,10 +1,12 @@
 import os
+import time
 from glob import glob
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import sklearn.decomposition
 import sklearn.ensemble
+import sklearn.feature_selection
 import sklearn.model_selection
 import sklearn.pipeline
 import sklearn.preprocessing
@@ -66,7 +68,7 @@ def get_freq_amp_data(df):
     channel_index = []
     for index, row in df.iterrows():
         #print(index)
-        df_data.append(np.abs(np.fft.rfft(row))[:1024])
+        df_data.append(np.abs(np.fft.rfft(row)))
         chord, sample, channel = index
         chord_index.append(chord)
         sample_index.append(sample)
@@ -104,22 +106,34 @@ def get_chord_classifier():
 
     return clf
 
+def hamming_window(df):
+    return np.hamming(df.shape[-1])
+
+def apply_window(df):
+    window_function = hamming_window(df)
+    return df.mul(window_function, axis='columns') # multiply elementwise filter onto data columns
+
 def chord_pipeline():
     df = get_signal_data()
+    df = apply_window(df)
     df_freq_amp = get_freq_amp_data(df)
     df = df.reset_index(level=('chord'))
     df_freq_amp = df_freq_amp.reset_index(level=('chord'))
 
-    pipe = sklearn.pipeline.Pipeline([('scaler', sklearn.preprocessing.MinMaxScaler()),
+    pipe = sklearn.pipeline.Pipeline([('feature_reduction', sklearn.feature_selection.SelectPercentile()),
+                                      ('scaler', sklearn.preprocessing.MinMaxScaler()),
                                       ('pca', sklearn.decomposition.PCA()),
                                       ('classifier', sklearn.ensemble.RandomForestClassifier(random_state=0))])
+                                      #('svc', sklearn.svm.SVC(probability=True))])
     
     params = {
-        'pca__n_components' : [0.8, 0.95, 10, 5],
-
-        'classifier__n_estimators' : [50, 100, 200],
+        'feature_reduction__score_func' : [sklearn.feature_selection.f_classif, sklearn.feature_selection.chi2, sklearn.feature_selection.mutual_info_classif],
+        'feature_reduction__percentile' : [*list(range(8,16))],
+        'pca__n_components' : [*list(np.linspace(0.9,0.98,9))],
+        'classifier__n_estimators' : [10, 25, 50, 100, 200],
         'classifier__max_depth' : [None, 10, 30],
-        'classifier__min_samples_split' : [2, 4, 0.2]
+        'classifier__min_samples_split' : [2, 4, 0.2],
+        'classifier__max_features' : ['sqrt', 'log2', None]
     }
 
     grid_search = sklearn.model_selection.GridSearchCV(estimator=pipe,
@@ -144,10 +158,11 @@ def chord_pipeline():
     for i in range(len(proba_results)):
         print(y_test.iloc[i], proba_results[i])
 
-    # joblib.dump(model, 'pipe_optimized.joblib')
+    joblib.dump(model, 'pipe_selected.joblib')
     model_loaded = get_pipe_optimized()
+
     print(model.score(X_test,y_test))
-    print(model_loaded.score(X_test,y_test))
+    #print(model_loaded.score(X_test,y_test))
     proba_loaded = model_loaded.predict_proba(X_test)
     for i in range(len(proba_results)):
         print(y_test.iloc[i], proba_results[i], proba_loaded[i])
@@ -155,9 +170,27 @@ def chord_pipeline():
     return model
 
 def get_pipe_optimized():
-    return joblib.load('pipe_optimized.joblib')
+    return joblib.load(os.path.abspath('.\\pipe_optimized.joblib'))
+
+def get_pipe_windowed():
+    return joblib.load(os.path.abspath('.\\pipe_windowed.joblib'))
+
+def get_pipe_selected():
+    return joblib.load(os.path.abspath('.\\pipe_selected.joblib'))
+
+def get_pipe_svc():
+    return joblib.load(os.path.abspath('.\\pipe_svc.joblib'))
 
 if __name__ == '__main__':
     sns.set_style("whitegrid")
     #get_chord_classifier()
-    chord_pipeline()
+    start = time.time()
+    try:
+        chord_pipeline()
+    except Exception as E:
+        print(E)
+    pipe = get_pipe_selected()
+    for param in pipe.get_params():
+        print(param, pipe.get_params()[param])
+    end = time.time()
+    print(end-start)

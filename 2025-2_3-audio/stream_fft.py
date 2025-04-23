@@ -121,8 +121,8 @@ def save_reference_sound(filename:str, recording: np.ndarray, samplerate: int = 
 def detect_signal(signal_data: np.ndarray):
     '''Returns true if a signal is detected, such that the peak signal intencity is located in the first quarter of the signal data'''
     detected = False
-    if np.argmax(signal_data) <= len(signal_data)//4:
-        if np.max(signal_data) >= 0.05:
+    if np.max(signal_data) >= 0.05:
+        if np.argmax(signal_data) <= len(signal_data)//5:
             detected = True
     return detected
 
@@ -138,7 +138,8 @@ def classify_spectrum(signal: np.ndarray, cls):
 
 def pipe_spectrum(signal: np.ndarray, pipe):
     for channel in signal.T:
-        sample = channel[:1024].reshape(1,-1)
+        sample = channel.reshape(1,-1)
+        sample = chord_classifier.apply_window(pd.DataFrame(sample))
         print(pipe.predict(sample), pipe.predict_proba(sample))
 
 
@@ -148,17 +149,17 @@ def stream_animation():
             print(status)
         q.put(indata.copy())
 
-    a_fft = audio_fft.AudioFFT()
-    a_fft.set_file(os.path.abspath(r'2025-2_3-audio\chords\c-chord.wav'))
-    data = a_fft.get_data()
-    a_fft.set_fdata().set_frequencies()
+    # a_fft = audio_fft.AudioFFT()
+    # a_fft.set_file(os.path.abspath(r'2025-2_3-audio\chords\c-chord.wav'))
+    # data = a_fft.get_data()
+    # a_fft.set_fdata().set_frequencies()
     #signal_data = np.zeros(data.shape)
     #freq_data = np.zeros((data.shape[0]//2, data.shape[1]))
-    signal_data = np.zeros((18961,2))
-    freq_data = np.zeros((signal_data.shape[0]//2, signal_data.shape[1]))
     #ref_sounds = ReferenceSounds(os.path.abspath(r'2025-2_3-audio\chords')).cut_to_size()
     #cls = chord_classifier.get_chord_classifier()
-    pipe = chord_classifier.get_pipe_optimized()
+    pipe = chord_classifier.get_pipe_selected()
+    signal_data = np.zeros((pipe.steps[0][1].n_features_in_*2,2))
+    freq_data = np.zeros((signal_data.shape[0]//2, signal_data.shape[1]))
 
     def ani_update(frame, signal_data, freq_data):
         stream_data = []
@@ -210,10 +211,10 @@ def stream_animation():
         #animation.save('stream_example.gif', writer='Pillow')
         plt.show()
 
-    fig, axs = plt.subplots(3,1, figsize=(20,8))
-    a_fft.fdata = a_fft.fdata[:-1]
-    a_fft.set_frequencies()
-    a_fft.frequenies = a_fft.frequenies[:-1]
+    # fig, axs = plt.subplots(3,1, figsize=(20,8))
+    # a_fft.fdata = a_fft.fdata[:-1]
+    # a_fft.set_frequencies()
+    # a_fft.frequenies = a_fft.frequenies[:-1]
     # for index, chord in enumerate(ref_sounds.reference_frequencies.keys()):
     #     a_fft.frequency_plot(ref_sounds.reference_frequencies[chord], axs[index])
     # plt.show()
