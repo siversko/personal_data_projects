@@ -61,7 +61,7 @@ def get_signal_data():
     df = make_signal_df(chord_sample_data)
     return df
 
-def get_freq_amp_data(df):
+def get_freq_amp_data(df, freq_columns=False):
     df_data = []
     chord_index = []
     sample_index = []
@@ -74,7 +74,10 @@ def get_freq_amp_data(df):
         sample_index.append(sample)
         channel_index.append(channel)
     index = pd.MultiIndex.from_arrays([chord_index, sample_index, channel_index], names=('chord', 'sample', 'channel'))
-    df_amp = pd.DataFrame(data=df_data, index=index)
+    cols = None
+    if freq_columns:
+        cols = np.fft.rfftfreq(len(row), 1/freq_columns)
+    df_amp = pd.DataFrame(data=df_data, index=index, columns=cols)
     return df_amp
 
 
@@ -185,10 +188,10 @@ if __name__ == '__main__':
     sns.set_style("whitegrid")
     #get_chord_classifier()
     start = time.time()
-    try:
-        chord_pipeline()
-    except Exception as E:
-        print(E)
+    # try:
+    #     chord_pipeline()
+    # except Exception as E:
+    #     print(E)
     pipe = get_pipe_selected()
     for param in pipe.get_params():
         print(param, pipe.get_params()[param])
