@@ -5,6 +5,7 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import sklearn.ensemble
 import sklearn.preprocessing
 import soundfile as sf
 import sounddevice as sd
@@ -14,6 +15,7 @@ import sklearn
 
 import audio_fft
 import chord_classifier
+import chroma
 
 class ReferenceSounds():
     ''' Deprecated '''
@@ -142,6 +144,11 @@ def pipe_spectrum(signal: np.ndarray, pipe):
         sample = chord_classifier.apply_window(pd.DataFrame(sample))
         print(pipe.predict(sample), pipe.predict_proba(sample))
 
+def chroma_classify(signal: np.ndarray, chroma_clf: sklearn.ensemble.RandomForestClassifier):
+    for channel in signal.T:
+        sample = pd.DataFrame(chroma.sample_chroma(pd.Series(channel))).T
+        print(sample)
+        print(chroma_clf.predict(sample), chroma_clf.predict_proba(sample))
 
 def stream_animation():
     def audio_callback(indata, frames, time, status):
@@ -158,6 +165,7 @@ def stream_animation():
     #ref_sounds = ReferenceSounds(os.path.abspath(r'2025-2_3-audio\chords')).cut_to_size()
     #cls = chord_classifier.get_chord_classifier()
     pipe = chord_classifier.get_pipe_selected()
+    chroma_clf = chroma.get_chroma_clf()
     signal_data = np.zeros((pipe.steps[0][1].n_features_in_*2,2))
     freq_data = np.zeros((signal_data.shape[0]//2, signal_data.shape[1]))
 
@@ -189,7 +197,8 @@ def stream_animation():
         if detect_signal(signal_data):
             print(f'signal detected {frame}')
             #classify_spectrum(freq_data, cls)
-            pipe_spectrum(freq_data, pipe)
+            #pipe_spectrum(freq_data, pipe)
+            chroma_classify(signal_data, chroma_clf)
         return (*signal_lines, *freq_lines) # must return a single sequence of artists
 
     fig, axs = plt.subplots(2,1, figsize=(20,8))

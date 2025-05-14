@@ -179,7 +179,7 @@ def get_pipe_windowed():
     return joblib.load(os.path.abspath('.\\pipe_windowed.joblib'))
 
 def get_pipe_selected():
-    return joblib.load(os.path.abspath('.\\pipe_selected.joblib'))
+    return joblib.load(os.path.abspath('.\\2025-2_3-audio\models\\pipe_selected.joblib'))
 
 def get_pipe_svc():
     return joblib.load(os.path.abspath('.\\pipe_svc.joblib'))
