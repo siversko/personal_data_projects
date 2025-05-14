@@ -178,3 +178,7 @@ cython_debug/
 *.wav
 *.aiff
 *.mp3
+
+
+#joblib objects 
+*.joblib

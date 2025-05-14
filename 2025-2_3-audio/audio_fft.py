@@ -119,7 +119,7 @@ class AudioFFT():
         for channel_data in abs_fdata:
             dom_freqs = []
             maximum_amp = max(np.abs(channel_data))
-            print('maximum_amp', maximum_amp)
+            #print('maximum_amp', maximum_amp)
             for i, amp in enumerate(channel_data):
                 if i == len(channel_data):
                     break
