@@ -6,6 +6,7 @@ import sklearn
 import sklearn.ensemble
 import sklearn.model_selection
 from chord_classifier import get_signal_data
+import joblib
 
 def get_notes() -> list[str]:
     '''Returns a list of notes in the chromatic scale'''
@@ -52,16 +53,26 @@ def get_chroma_clf():
     chroma_df = df.apply(sample_chroma, axis=1)
 
     clf = chroma_clf(chroma_df)
-    return clf
+    return df.shape[-1], clf
+
+def save_model():
+    window_size, clf = get_chroma_clf()
+    joblib.dump((window_size, clf), r".\2025-2_3-audio\models\chroma.joblib")
+
+def load_model():
+    ''' Returns a touple of original window size and model in shape (window_size, model) '''
+    return joblib.load(r".\2025-2_3-audio\models\chroma.joblib")
 
 def main():
-    df = get_signal_data()
-    chroma_df = df.apply(sample_chroma, axis=1)
-    print(chroma_df)
-    print(chroma_df.groupby(level='chord').mean())
-    plot_chord_chromas(chroma_df)
-    clf = chroma_clf(chroma_df)
-    print(clf)
+    # df = get_signal_data()
+    # chroma_df = df.apply(sample_chroma, axis=1)
+    # print(chroma_df)
+    # print(chroma_df.groupby(level='chord').mean())
+    # plot_chord_chromas(chroma_df)
+    # clf = chroma_clf(chroma_df)
+    # print(clf)
+    save_model()
+    print(load_model())
 
 
 
