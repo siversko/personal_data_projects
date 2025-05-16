@@ -164,9 +164,12 @@ def stream_animation():
     #freq_data = np.zeros((data.shape[0]//2, data.shape[1]))
     #ref_sounds = ReferenceSounds(os.path.abspath(r'2025-2_3-audio\chords')).cut_to_size()
     #cls = chord_classifier.get_chord_classifier()
-    pipe = chord_classifier.get_pipe_selected()
-    chroma_clf = chroma.get_chroma_clf()
-    signal_data = np.zeros((pipe.steps[0][1].n_features_in_*2,2))
+    # pipe = chord_classifier.get_pipe_selected()
+    # window_size = pipe.steps[0][1].n_features_in_*2
+    #window_size, chroma_clf = chroma.get_chroma_clf()
+    window_size, chroma_clf = chroma.load_model()
+    print(window_size)
+    signal_data = np.zeros((window_size,2))
     freq_data = np.zeros((signal_data.shape[0]//2, signal_data.shape[1]))
 
     def ani_update(frame, signal_data, freq_data):
