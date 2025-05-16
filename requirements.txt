@@ -1,0 +1,11 @@
+#install with pip install -r requirements.txt
+librosa
+matplotlib
+seaborn
+scikit-learn==1.6.1
+numpy
+scipy
+pandas
+joblib
+soundfile
+sounddevice
