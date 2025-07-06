@@ -9,3 +9,4 @@ pandas
 joblib
 soundfile
 sounddevice
+pygame==2.1.2
