@@ -121,6 +121,7 @@ def main():
     c_group = pygame.sprite.GroupSingle()
     c = notations.Chord('C-chord', target_surface=display_canvas, pos = (CANVAS_WIDTH, CANVAS_HEIGHT//2)) # (CANVAS_WIDTH*(num_chords-1)/num_chords, CANVAS_HEIGHT//2)
     c_group.add(c)
+    print()
 
     chords = pygame.sprite.Group()
     active_chord_surface = pygame.surface.Surface((c.rect.width, c.rect.height),pygame.SRCALPHA, 32)
@@ -148,10 +149,9 @@ def main():
                     beat_sound.play()
                     curr_beat_time = time
                     next_beat_time = time + tempo_ms
-                    chords.add(notations.Chord('C-chord', 
-                            target_surface=display_canvas,
-                            pos = (w_canvas, h_canvas//2)).set_speed_rectangular(tempo_ms=tempo_ms, num_chords=num_chords)
-                            )
+                    chords.add(notations.Chord.create_Chord(target_surface=display_canvas,
+                                                            pos = (w_canvas, h_canvas//3)).set_speed_rectangular(tempo_ms=tempo_ms, num_chords=num_chords))
+                    print(time)
                     if len(chords) < 1:
                         print('empty')
                 if event.type == end_of_game:
@@ -183,12 +183,13 @@ def main():
                     prev_prev_score_rect.topleft = (0, prev_score_rect.height)
                 prev_score_field = get_score_field(score_text, time_offset_text, clf_pred_text, score_color, scale=0.5)
                 prev_score_rect = prev_score_field.get_rect()
+
                 clf_pred, clf_proba = model.chroma_classify(signal_data, clf)
                 beat_score = clf_proba*max(1 - time_target/(tempo_ms//2),0)
                 score += beat_score*100
                 print(beat_score, score)
                 recently_detected = True
-                time_delay = time + int(tempo_ms*0.2)
+                time_delay = time + int(tempo_ms*0.4)
                 prev_score_text, prev_time_offset_text, prev_clf_pred_text, prev_score_color = score_text, time_offset_text, clf_pred_text, score_color
                 #prev_prev_score_text, prev_prev_time_offset_text, prev_prev_clf_pred_text, prev_prev_score_color = prev_score_text, prev_time_offset_text, prev_clf_pred_text, prev_score_color
 
