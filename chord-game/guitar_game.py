@@ -5,9 +5,9 @@ import numpy as np
 import sounddevice
 import queue
 
-def set_game_events(total_time_ms, bpms):
+def set_game_events(total_time_ms, bpms, num_chords):
     beat = pygame.event.custom_type()
-    pygame.time.set_timer(beat, bpms, total_time_ms//bpms) # beat every bpms repeat total_time//bpms times
+    pygame.time.set_timer(beat, bpms, total_time_ms//bpms + num_chords) # beat every bpms repeat total_time//bpms times
     end_of_game = pygame.event.custom_type()
     pygame.time.set_timer(end_of_game, total_time_ms, True) # repeat once
     return beat, end_of_game
@@ -70,7 +70,8 @@ def main():
 
     num_chords=4
     settings = get_settings()
-    beat, end_of_game = set_game_events(settings['total_time_ms'], bpm_to_ms(settings['bpm']))
+    beat, end_of_game = set_game_events(settings['total_time_ms'], bpm_to_ms(settings['bpm']), num_chords)
+    num_beats = settings['total_time_ms']//bpm_to_ms(settings['bpm'])
     beat_sound = pygame.mixer.Sound(audio.get_audio())
     beat_sound.set_volume(1.5)
     tempo_ms = bpm_to_ms(settings['bpm'])
@@ -85,6 +86,8 @@ def main():
     font = pygame.font.SysFont('Arial', 120)
     timer_text = font.render("15:00", True, "black")
     timer_text_rect = timer_text.get_rect(topright=(CANVAS_WIDTH,0))#CANVAS_HEIGHT))
+    beats_text = font.render(f"{num_beats}", True, "black")
+    beats_text_rect = beats_text.get_rect(topright=(CANVAS_WIDTH,timer_text_rect.height))
     
 
     ### Score Info ###
@@ -133,7 +136,7 @@ def main():
 
     curr_beat_time = pygame.time.get_ticks()
     next_beat_time = curr_beat_time + tempo_ms
-    with sounddevice.InputStream(callback=audio_callback) as stream:
+    with sounddevice.InputStream(callback=audio_callback):
         while running:
             time = pygame.time.get_ticks()
             dt += time-prev_time
@@ -144,13 +147,18 @@ def main():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == beat:
+                if event.type == beat:
                     #print('beat', time-curr_beat_time)
                     beat_sound.play()
                     curr_beat_time = time
                     next_beat_time = time + tempo_ms
-                    chords.add(notations.Chord.create_Chord(target_surface=display_canvas,
-                                                            pos = (w_canvas, h_canvas//3)).set_speed_rectangular(tempo_ms=tempo_ms, num_chords=num_chords))
+                    print(time, notations.Chord.simulation_time)
+                    notations.Chord.next_beat_time = next_beat_time
+                    if num_beats > 0:
+                        chords.add(notations.Chord.create_Chord(target_surface=display_canvas,
+                                                                pos = (w_canvas, h_canvas//3)).set_speed_rectangular(tempo_ms=tempo_ms, num_chords=num_chords))
+                        num_beats -= 1
+                        beats_text = font.render(f"{num_beats}", True, "black")
                     print(time)
                     if len(chords) < 1:
                         print('empty')
@@ -177,17 +185,26 @@ def main():
                 time_target = abs(curr_beat_time - time)
 
             if model.detect_signal(signal_data) and not recently_detected:
+                
                 if 'prev_score_field' in locals():
                     prev_prev_score_field = get_score_field(prev_score_text, prev_time_offset_text, prev_clf_pred_text, prev_score_color, scale=0.4)
                     prev_prev_score_rect = prev_prev_score_field.get_rect()
                     prev_prev_score_rect.topleft = (0, prev_score_rect.height)
                 prev_score_field = get_score_field(score_text, time_offset_text, clf_pred_text, score_color, scale=0.5)
                 prev_score_rect = prev_score_field.get_rect()
-
+                chord_collition = active_chord_rect.collidedict({chord : chord.rect for chord in chords})
                 clf_pred, clf_proba = model.chroma_classify(signal_data, clf)
                 beat_score = clf_proba*max(1 - time_target/(tempo_ms//2),0)
+
+                if chord_collition:
+                    chord_collition = chord_collition[0]
+                    if chord_collition.chord_name.split('-')[0].lower() != clf_pred[0]:
+                        beat_score = 0
+                        print('Wrong chord!', chord_collition.chord_name.split('-')[0].lower(), clf_pred[0])
+
+
                 score += beat_score*100
-                print(beat_score, score)
+
                 recently_detected = True
                 time_delay = time + int(tempo_ms*0.4)
                 prev_score_text, prev_time_offset_text, prev_clf_pred_text, prev_score_color = score_text, time_offset_text, clf_pred_text, score_color
@@ -200,17 +217,18 @@ def main():
                             (255) *    beat_score , # g //8
                             0,                         #b
                             180)                       #alpha
+            
             if time > time_delay:
                 recently_detected = False
-            notations.Chord.simulation_time += fixed_dt
             while fixed_dt <= dt:
                 chords.update(fixed_dt)
                 dt -= fixed_dt
+                notations.Chord.simulation_time += fixed_dt
 
             time_remaining = settings['total_time_ms'] - pygame.time.get_ticks()
             if not time_remaining <= 0:
                 timer_text = font.render(f"{time_remaining//60_000:02}:{time_remaining // 1000 % 60:02}", True, "black")
-            if time_remaining < 0:
+            if len(chords) < 1 and num_beats <= 0:
                 time_offset_text = font.render(f"{time_sign}{0:4}", True, "black")
 
 
@@ -218,10 +236,15 @@ def main():
             chords.draw(display_canvas)
             display_canvas.blit(active_chord_surface, active_chord_rect)
             display_canvas.blit(timer_text, timer_text_rect)
-            score_field.fill(score_color)#((0,0,0,180)) #score_field.fill((225,225//8,0,180))
-            score_field.blit(score_text, score_text_rect)
-            score_field.blit(time_offset_text, time_offset_rect)
-            score_field.blit(clf_pred_text, clf_pred_rect)
+            display_canvas.blit(beats_text, beats_text_rect)
+            if not recently_detected or not drawn_once:
+                score_field.fill(score_color)#((0,0,0,180)) #score_field.fill((225,225//8,0,180))
+                score_field.blit(score_text, score_text_rect)
+                score_field.blit(time_offset_text, time_offset_rect)
+                score_field.blit(clf_pred_text, clf_pred_rect)
+                drawn_once = False
+            else:
+                drawn_once = True
             display_canvas.blit(score_field, score_field_rect)
             if 'prev_score_field' in locals():
                 #display_canvas.blit(pygame.transform.scale(prev_score_field, (prev_score_rect.width//2, prev_score_rect.height//2)), (0,0))

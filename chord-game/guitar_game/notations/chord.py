@@ -12,12 +12,14 @@ class Chord(pygame.sprite.Sprite):
 
     rng = numpy.random.default_rng(seed=0)
     chord_types = numpy.array([chord_label.strip('.png') for chord_label in os.listdir(os.path.join(os.path.dirname(__file__), 'img'))], dtype=object)
-    
+
     simulation_time = 0
+    next_beat_time = 0
     num_active_chords = 0
     def __init__(self, chord_name, target_surface: pygame.surface.Surface, pos: tuple[int,int] = (0,0), *groups):
         super().__init__(*groups)
-        print(chord_name, 'im alive!', end=' ')
+        print(chord_name, 'im alive!', Chord.num_active_chords ,end=' ')
+        self.chord_name = chord_name
         img = os.path.join(os.path.dirname(__file__), 'img', chord_name + '.png')
         self.image = pygame.image.load(img)
         self.rect = self.image.get_rect()
@@ -30,6 +32,9 @@ class Chord(pygame.sprite.Sprite):
     def create_Chord(cls, target_surface: pygame.surface.Surface, pos: tuple[int,int] = (0,0), *groups):
         return Chord(cls.rng.choice(cls.chord_types), target_surface, pos, *groups)
 
+    @classmethod
+    def cls_set_speed_rectangular(cls, tempo_ms:float =1000, num_chords:int=1):
+        pass
 
     def set_speed_rectangular(self, tempo_ms:float =1000, num_chords:int=1):
         '''Speed variables for rectangular speed profile '''
@@ -75,9 +80,10 @@ class Chord(pygame.sprite.Sprite):
         
 
     def update(self, fixed_dt, *args, **kwargs):
-        #print(self.x_pos, self.get_speed2(self.simulation_time), fixed_dt)
-        #print(self, self.simulation_time)
+        #print(self.x_pos, self.get_speed(self.simulation_time), fixed_dt)
+        #print(self.chord_name, self.simulation_time, self.get_speed(self.simulation_time % self.tempo_ms) * fixed_dt)
         self.x_pos -= self.get_speed(self.simulation_time % self.tempo_ms) * fixed_dt
+        #self.x_pos -= self.get_speed(self.next_beat_time - self.simulation_time) * fixed_dt
         self.rect.x = int(self.x_pos)
         if self.rect.x < -1.5*self.rect.width:
             self.kill()
@@ -98,10 +104,10 @@ class Chord(pygame.sprite.Sprite):
 
     def _plot_speed_profile(self):
         ''' Plotting speed profile for testing purpose'''
-        times = numpy.linspace(0, self.tempo_ms, 100000)
+        times = numpy.linspace(0, 10*self.tempo_ms, 100000)
         speeds = []
         for time in times:
-            speeds.append(self.get_speed(time))
+            speeds.append(self.get_speed(time % self.tempo_ms))
         speeds = numpy.array(speeds)
         fig, ax = plt.subplots()
         ax.plot(times, speeds)
