@@ -56,7 +56,7 @@ def main():
     CANVAS_HEIGHT, CANVAS_WIDTH = 1600, 2000
     WINDOW_HEIGHT, WINDOW_WIDTH = 600, 1000
 
-    sound_window, clf = model.load_chroma()
+    sound_window, clf = model.load_chroma('chroma_ovr.joblib')
     signal_data = np.zeros((sound_window,2))
     _ = model.chroma_classify(populate_signal(signal_data), clf)
 
@@ -194,13 +194,14 @@ def main():
                 prev_score_rect = prev_score_field.get_rect()
                 chord_collition = active_chord_rect.collidedict({chord : chord.rect for chord in chords})
                 clf_pred, clf_proba = model.chroma_classify(signal_data, clf)
+                print(clf_pred, clf_proba)
                 beat_score = clf_proba*max(1 - time_target/(tempo_ms//2),0)
 
                 if chord_collition:
                     chord_collition = chord_collition[0]
                     if chord_collition.chord_name.split('-')[0].lower() != clf_pred[0]:
                         beat_score = 0
-                        print('Wrong chord!', chord_collition.chord_name.split('-')[0].lower(), clf_pred[0])
+                        #print('Wrong chord!', chord_collition.chord_name.split('-')[0].lower(), clf_pred[0])
 
 
                 score += beat_score*100

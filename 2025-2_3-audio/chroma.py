@@ -49,6 +49,25 @@ def chroma_clf(chroma_df: pd.DataFrame):
     score_model(model.best_estimator_, X_test, y_test)
     return model.best_estimator_
 
+def chroma_ovr(chroma_df: pd.DataFrame):
+    chroma_df = chroma_df.reset_index(level=('chord'))
+    X = chroma_df.loc[:, chroma_df.columns != 'chord']
+    y = chroma_df['chord']
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X,y, test_size=0.33,random_state=0)
+    clf = sklearn.multiclass.OneVsOneClassifier(estimator=sklearn.ensemble.RandomForestClassifier(random_state=0))
+    param_grid = {'estimator__n_estimators' : [5, 12, 20, 100]}
+    grid_search = sklearn.model_selection.GridSearchCV(estimator=clf,
+                                                       param_grid=param_grid,
+                                                       cv=5,
+                                                       scoring='accuracy',
+                                                       verbose=1,
+                                                       n_jobs=-1)
+    
+    model = grid_search.fit(X_train, y_train)
+
+    score_model(model.best_estimator_, X_test, y_test)
+    return model.best_estimator_
+
 def chroma_pipe(signal_data: pd.DataFrame):
     signal_data = signal_data.reset_index(level=('chord'))
     X = signal_data.loc[:, signal_data.columns != 'chord']
@@ -88,7 +107,7 @@ def get_chroma_clf():
 
 def save_model():
     window_size, clf = get_chroma_clf()
-    joblib.dump((window_size, clf), r".\2025-2_3-audio\models\chroma.joblib")
+    joblib.dump((window_size, clf), r".\2025-2_3-audio\models\chroma_ovr.joblib")
 
 def get_chroma_pipe_clf():
     df = get_signal_data()
@@ -111,9 +130,9 @@ def main():
     # plot_chord_chromas(chroma_df)
     # clf = chroma_clf(chroma_df)
     # print(clf)
-    #save_model()
+    save_model()
     #print(load_model())
-    save_pipe_model()
+    #save_pipe_model()
 
 
 

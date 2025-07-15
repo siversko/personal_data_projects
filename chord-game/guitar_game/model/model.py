@@ -30,10 +30,7 @@ def df_chroma(df: pd.DataFrame) -> pd.DataFrame:
 
 def chroma_classify(signal: np.ndarray, clf: sklearn.ensemble.RandomForestClassifier):
     '''Returns predicted label and confidence probability score'''
-    #print(librosa.to_mono(signal.T))
-    print(clf)
     sample = pd.DataFrame(sample_chroma(librosa.to_mono(signal.T)))
-    #print(clf.predict(sample.T), np.max(clf.predict_proba(sample.T,)))
     return clf.predict(sample.T), np.max(clf.predict_proba(sample.T,))
 
 def chroma_pipe_classify(signal: np.ndarray, clf: sklearn.pipeline.Pipeline):
@@ -42,7 +39,7 @@ def chroma_pipe_classify(signal: np.ndarray, clf: sklearn.pipeline.Pipeline):
 
 
 if __name__ == '__main__':
-    win_size, clf = load_chroma('chroma.joblib')
+    win_size, clf = load_chroma('chroma_ovr.joblib')
     win = np.random.random_sample((win_size,2))*(5+5) - 5
     print(chroma_classify(win, clf))
     clf = load_chroma('chroma_pipe.joblib')
